@@ -1,42 +1,121 @@
-variable "display_name" {
-  type        = string
-  description = "(Required) A short name or phrase used to identify the policy in dashboards, notifications, and incidents. To avoid confusion, don't use the same display name for multiple policies in the same project. The name is limited to 512 Unicode characters."
-}
+resource "google_monitoring_alert_policy" "alert_policy" {
+  display_name          = var.display_name
+  project               = var.project_id
+  combiner              = var.combiner
+  notification_channels = var.notification_channels
+  user_labels           = var.user_labels
+  enabled               = var.enabled
+  dynamic "documentation" {
+    for_each = length(var.documentation) > 0 ? [true] : [false]
+    content {
+      content = lookup(var.documentation, "content", "")
+      mime_type       = lookup(var.documentation, "mime_type", "")
+    }
+  }
 
-variable "project_id" {
-  type        = string
-  description = "(Required) The ID of the project in which the resource belongs. If it is not provided, the provider project is used."
-}
+  dynamic "conditions" {
+    for_each = { for key, value in var.conditions :
+      key => value
+    }
 
-variable "combiner" {
-  type        = string
-  description = "(Required) How to combine the results of multiple conditions to determine if an incident should be opened. Possible values are AND, OR, and AND_WITH_MATCHING_RESOURCE."
-}
+    content {
+      display_name = conditions.key
 
-variable "user_labels" {
-  type        = map(string)
-  default     = null
-  description = "(Optional) This field is intended to be used for organizing and identifying the AlertPolicy objects.The field can contain up to 64 entries. Each key and value is limited to 63 Unicode characters or 128 bytes, whichever is smaller. Labels and values can contain only lowercase letters, numerals, underscores, and dashes. Keys must begin with a letter."
-}
+      dynamic "condition_threshold" {
+        for_each = lookup(conditions.value, "condition_threshold", null) == null ? [] : [tolist([conditions.value.condition_threshold])]
 
-variable "documentation" {
-  type = map(string)
-  default     = {}
-  description = "(Optional) Documentation that is included with notifications and incidents related to this policy. Best practice is for the documentation to include information to help responders understand, mitigate, escalate, and correct the underlying problems detected by the alerting policy. Notification channels that have limited capacity might not show this documentation."
-}
+        content {
+          threshold_value    = lookup(conditions.value.condition_threshold, "threshold_value", null) == null ? null : lookup(conditions.value.condition_threshold, "threshold_value")
+          denominator_filter = lookup(conditions.value.condition_threshold, "denominator_filter", null) == null ? null : lookup(conditions.value.condition_threshold, "denominator_filter")
+          filter             = lookup(conditions.value.condition_threshold, "filter", null) == null ? null : lookup(conditions.value.condition_threshold, "filter")
+          duration           = lookup(conditions.value.condition_threshold, "duration", null) == null ? null : lookup(conditions.value.condition_threshold, "duration")
+          comparison         = lookup(conditions.value.condition_threshold, "comparison", null) == null ? null : lookup(conditions.value.condition_threshold, "comparison")
 
-variable "notification_channels" {
-  type        = list(string)
-  description = "(Optional) Identifies the notification channels to which notifications should be sent when incidents are opened or closed or when new violations occur on an already opened incident. Each element of this array corresponds to the name field in each of the NotificationChannel objects that are returned from the notificationChannels.list method. The syntax of the entries in this field is projects/[PROJECT_ID]/notificationChannels/[CHANNEL_ID]"
-}
+          dynamic "aggregations" {
+            for_each = lookup(conditions.value.condition_threshold, "aggregations_enabled", "false") == "false" ? [] : [tolist([conditions.value.condition_threshold])]
 
-variable "conditions" {
-  type = map(map(any))
-  description = "(Required) A list of conditions for the policy. The conditions are combined by AND or OR according to the combiner field. If the combined conditions evaluate to true, then an incident is created. A policy can have from one to six conditions. https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/monitoring_alert_policy"
-}
+            content {
+              alignment_period     = lookup(conditions.value.condition_threshold, "aggregations_alignment_period", null) == null ? null : lookup(conditions.value.condition_threshold, "aggregations_alignment_period")
+              per_series_aligner   = lookup(conditions.value.condition_threshold, "aggregations_per_series_aligner", null) == null ? null : lookup(conditions.value.condition_threshold, "aggregations_per_series_aligner")
+              group_by_fields      = lookup(conditions.value.condition_threshold, "aggregations_group_by_fields", null) == null ? null : lookup(conditions.value.condition_threshold, "aggregations_group_by_fields")
+              cross_series_reducer = lookup(conditions.value.condition_threshold, "aggregations_cross_series_reducer", null) == null ? null : lookup(conditions.value.condition_threshold, "aggregations_cross_series_reducer")
+            }
+          }
 
-variable "enabled" {
-  type = bool
-  description = "(Optional) Whether or not the policy is enabled. The default is true."
-  default = true
+          dynamic "denominator_aggregations" {
+            for_each = lookup(conditions.value.condition_threshold, "denominator_aggregations_enabled", "false") == "false" ? [] : [tolist([conditions.value.condition_threshold])]
+
+            content {
+              alignment_period     = lookup(conditions.value.condition_threshold, "denominator_aggregations_alignment_period", null) == null ? null : lookup(conditions.value.condition_threshold, "denominator_aggregations_alignment_period")
+              per_series_aligner   = lookup(conditions.value.condition_threshold, "denominator_aggregations_per_series_aligner", null) == null ? null : lookup(conditions.value.condition_threshold, "denominator_aggregations_per_series_aligner")
+              group_by_fields      = lookup(conditions.value.condition_threshold, "denominator_aggregations_group_by_fields", null) == null ? null : lookup(conditions.value.condition_threshold, "denominator_aggregations_group_by_fields")
+              cross_series_reducer = lookup(conditions.value.condition_threshold, "denominator_aggregations_cross_series_reducer", null) == null ? null : lookup(conditions.value.condition_threshold, "denominator_aggregations_cross_series_reducer")
+            }
+          }
+
+          dynamic "trigger" {
+            for_each = lookup(conditions.value.condition_threshold, "trigger_enabled", "false") == "false" ? [] : [tolist([conditions.value.condition_threshold])]
+
+            content {
+              percent = lookup(conditions.value.condition_threshold, "trigger_percent", null) == null ? null : lookup(conditions.value.condition_threshold, "trigger_percent")
+              count   = lookup(conditions.value.condition_threshold, "trigger_count", null) == null ? null : lookup(conditions.value.condition_threshold, "trigger_count")
+            }
+          }
+
+
+        }
+      }
+
+      dynamic "condition_monitoring_query_language" {
+        for_each = lookup(conditions.value, "condition_monitoring_query_language", null) == null ? [] : [tolist([conditions.value.condition_monitoring_query_language])]
+
+        content {
+          query    = lookup(conditions.value.condition_monitoring_query_language, "query", null) == null ? null : lookup(conditions.value.condition_monitoring_query_language, "query")
+          duration = lookup(conditions.value.condition_monitoring_query_language, "duration", null) == null ? null : lookup(conditions.value.condition_monitoring_query_language, "duration")
+
+          dynamic "trigger" {
+            for_each = lookup(conditions.value.condition_monitoring_query_language, "trigger_enabled", "false") == null ? [] : [tolist([conditions.value.condition_monitoring_query_language])]
+
+            content {
+              percent = lookup(conditions.value.condition_monitoring_query_language, "trigger_percent", null) == null ? null : lookup(conditions.value.condition_monitoring_query_language, "trigger_percent")
+              count   = lookup(conditions.value.condition_monitoring_query_language, "trigger_count", null) == null ? null : lookup(conditions.value.condition_monitoring_query_language, "trigger_count")
+            }
+          }
+        }
+      }
+
+      dynamic "condition_absent" {
+        for_each = lookup(conditions.value, "condition_absent", null) == null ? [] : [tolist([conditions.value.condition_absent])]
+
+        content {
+          filter   = lookup(conditions.value.condition_absent, "filter", null) == null ? null : lookup(conditions.value.condition_absent, "filter")
+          duration = lookup(conditions.value.condition_absent, "duration", null) == null ? null : lookup(conditions.value.condition_absent, "duration")
+
+          dynamic "aggregations" {
+            for_each = lookup(conditions.value.condition_absent, "aggregations_enabled", "false") == "false" ? [] : [tolist([conditions.value.condition_absent])]
+
+            content {
+              alignment_period     = lookup(conditions.value.condition_absent, "aggregations_alignment_period", null) == null ? null : lookup(conditions.value.condition_absent, "aggregations_alignment_period")
+              per_series_aligner   = lookup(conditions.value.condition_absent, "aggregations_per_series_aligner", null) == null ? null : lookup(conditions.value.condition_absent, "aggregations_per_series_aligner")
+              group_by_fields      = lookup(conditions.value.condition_absent, "aggregations_group_by_fields", null) == null ? null : lookup(conditions.value.condition_absent, "aggregations_group_by_fields")
+              cross_series_reducer = lookup(conditions.value.condition_absent, "aggregations_cross_series_reducer", null) == null ? null : lookup(conditions.value.condition_absent, "aggregations_cross_series_reducer")
+            }
+          }
+
+          dynamic "trigger" {
+            for_each = lookup(conditions.value.condition_absent, "trigger_enabled", "false") == "false" ? [] : [tolist([conditions.value.condition_absent])]
+
+            content {
+              percent = lookup(conditions.value.condition_absent, "trigger_percent", null) == null ? null : lookup(conditions.value.condition_absent, "trigger_percent")
+              count   = lookup(conditions.value.condition_absent, "trigger_count", null) == null ? null : lookup(conditions.value.condition_absent, "trigger_count")
+            }
+          }
+
+
+        }
+      }
+
+    }
+
+  }
 }
